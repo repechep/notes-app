@@ -1,6 +1,6 @@
 # 📝 Notes App - Full Stack Application
 
-Una aplicación completa de gestión de notas construida con **FastAPI** (backend) y **React** (frontend), con soporte para **Dark Mode** y integración con **GitHub API**.
+Una aplicación completa de gestión de notas construida con **FastAPI** (backend) y **React** (frontend), con soporte para **Dark Mode** e integración con **PokéAPI**.
 
 ![Notes App](https://img.shields.io/badge/Status-Production%20Ready-brightgreen)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.104.1-009688)
@@ -21,7 +21,7 @@ Una aplicación completa de gestión de notas construida con **FastAPI** (backen
 - ✅ **Interfaz moderna** para gestión de notas
 - ✅ **Dark Mode** con persistencia
 - ✅ **Búsqueda en tiempo real**
-- ✅ **Integración con GitHub API** (issues de VS Code)
+- ✅ **Integración con PokéAPI** (datos de Pokémon)
 - ✅ **Diseño responsivo** y accesible
 - ✅ **Estados de carga y error**
 

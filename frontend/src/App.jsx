@@ -13,7 +13,7 @@ function App() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [activeTab, setActiveTab] = useState('notes');
-  const [externalData, setExternalData] = useState([]);
+  const [externalData, setExternalData] = useState(null);
   const [showModal, setShowModal] = useState(false);
   
   // Estados para manejar carga y errores
@@ -38,12 +38,12 @@ function App() {
     }
   };
 
-  // Función para obtener datos de API externa (GitHub)
+  // Función para obtener datos de API externa (PokéAPI)
   const fetchExternalData = async () => {
     setExternalLoading(true);
     setExternalError(null);
     try {
-      const response = await fetch('https://api.github.com/repos/microsoft/vscode/issues?state=open&per_page=10');
+      const response = await fetch('https://pokeapi.co/api/v2/pokemon/ditto');
       if (!response.ok) throw new Error('Failed to fetch');
       const data = await response.json();
       setExternalData(data);
@@ -258,7 +258,7 @@ function App() {
             ...(activeTab === 'external' ? styles.activeTab : styles.inactiveTab)
           }}
         >
-          GitHub Issues
+          Pokémon Data
         </button>
       </div>
 
@@ -368,62 +368,46 @@ function App() {
           {externalError && <ErrorMessage message={externalError} onRetry={fetchExternalData} />}
 
           {/* External Data */}
-          {!externalLoading && !externalError && (
+          {!externalLoading && !externalError && externalData && (
             <div>
-              <h2>VS Code Issues (GitHub API)</h2>
+              <h2>Pokémon Data (PokéAPI)</h2>
               <p style={{color: 'var(--text-secondary)', marginBottom: '20px'}}>
-                Latest open issues from the VS Code repository
+                Information about Ditto from the PokéAPI
               </p>
-              {externalData.map((issue) => (
-                <div key={issue.id} style={styles.noteCard}>
-                  <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px'}}>
-                    <h3 style={styles.noteTitle}>{issue.title}</h3>
-                    <span style={{
-                      backgroundColor: issue.state === 'open' ? '#28a745' : '#6c757d',
-                      color: 'white',
-                      padding: '2px 8px',
-                      borderRadius: '12px',
-                      fontSize: '12px',
-                      textTransform: 'capitalize'
-                    }}>
-                      {issue.state}
-                    </span>
-                  </div>
-                  <p style={styles.noteContent}>
-                    {issue.body ? issue.body.substring(0, 200) + '...' : 'No description available'}
-                  </p>
-                  <div style={{display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '10px'}}>
-                    {issue.labels?.slice(0, 3).map((label) => (
-                      <span key={label.id} style={{
-                        backgroundColor: `#${label.color}`,
-                        color: 'white',
-                        padding: '2px 6px',
-                        borderRadius: '8px',
-                        fontSize: '11px'
-                      }}>
-                        {label.name}
+              <div style={{...styles.noteCard, display: 'flex', gap: '20px', alignItems: 'center'}}>
+                <img 
+                  src={externalData.sprites?.front_default} 
+                  alt={externalData.name}
+                  style={{width: '120px', height: '120px'}}
+                />
+                <div>
+                  <h3 style={{...styles.noteTitle, textTransform: 'capitalize'}}>{externalData.name}</h3>
+                  <p style={styles.noteContent}>Height: {externalData.height / 10} m | Weight: {externalData.weight / 10} kg</p>
+                  <div style={{marginBottom: '10px'}}>
+                    <strong>Abilities: </strong>
+                    {externalData.abilities?.map((ability, index) => (
+                      <span key={index} style={{marginRight: '10px', textTransform: 'capitalize'}}>
+                        {ability.ability.name}{ability.is_hidden ? ' (Hidden)' : ''}
                       </span>
                     ))}
                   </div>
-                  <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                    <small style={{color: 'var(--text-muted)'}}>
-                      #{issue.number} by {issue.user.login}
-                    </small>
-                    <a 
-                      href={issue.html_url} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      style={{
-                        color: 'var(--primary)',
-                        textDecoration: 'none',
+                  <div>
+                    <strong>Types: </strong>
+                    {externalData.types?.map((type, index) => (
+                      <span key={index} style={{
+                        marginRight: '10px', 
+                        textTransform: 'capitalize', 
+                        backgroundColor: '#e3f2fd', 
+                        padding: '2px 8px', 
+                        borderRadius: '12px',
                         fontSize: '12px'
-                      }}
-                    >
-                      View on GitHub →
-                    </a>
+                      }}>
+                        {type.type.name}
+                      </span>
+                    ))}
                   </div>
                 </div>
-              ))}
+              </div>
             </div>
           )}
         </div>
