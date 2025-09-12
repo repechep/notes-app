@@ -25,17 +25,36 @@ Una aplicación completa de gestión de notas construida con **FastAPI** (backen
 - ✅ **Diseño responsivo** y accesible
 - ✅ **Estados de carga y error**
 
-## 🚀 Ejecución Rápida con Docker
+## 🚀 Ejecución Rápida
 
 ### Prerrequisitos
-- [Docker](https://www.docker.com/get-started)
-- [Docker Compose](https://docs.docker.com/compose/install/)
+- [Docker](https://www.docker.com/get-started) y [Docker Compose](https://docs.docker.com/compose/install/)
+- O [Python 3.11+](https://python.org) y [Node.js 18+](https://nodejs.org)
 
-### Comando único
+### Configuración Automática
 ```bash
-git clone https://github.com/repechep/notes-app.git
+git clone https://github.com/TU_USUARIO/notes-app.git
 cd notes-app
+
+# Linux/Mac
+./setup.sh
+
+# Windows
+setup.bat
+```
+
+### Ejecución con Docker (Recomendado)
+```bash
 docker-compose up --build
+```
+
+### Ejecución Manual
+```bash
+# Instalar dependencias
+make install
+
+# Ejecutar en desarrollo
+make dev
 ```
 
 ### URLs de la aplicación
@@ -160,20 +179,18 @@ REACT_APP_API_URL=http://localhost:8000
 ## 📦 Comandos Útiles
 
 ```bash
-# Iniciar con Docker
-docker-compose up -d
+# Con Makefile
+make help          # Ver todos los comandos
+make install       # Instalar dependencias
+make dev          # Ejecutar en desarrollo
+make test         # Ejecutar tests
+make clean        # Limpiar archivos temporales
 
-# Ver logs
-docker-compose logs -f
-
-# Reconstruir imágenes
-docker-compose up --build
-
-# Parar servicios
-docker-compose down
-
-# Limpiar volúmenes
-docker-compose down -v
+# Con Docker
+docker-compose up --build    # Iniciar aplicación
+docker-compose logs -f       # Ver logs
+docker-compose down          # Parar servicios
+docker-compose down -v       # Limpiar volúmenes
 ```
 
 ## 🤝 Contribuir

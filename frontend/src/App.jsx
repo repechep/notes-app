@@ -5,6 +5,32 @@ import NoteModal from './components/NoteModal';
 import LoadingSpinner from './components/LoadingSpinner';
 import ErrorMessage from './components/ErrorMessage';
 import DarkModeToggle from './components/DarkModeToggle';
+import DeleteModal from './components/DeleteModal';
+
+// Función para obtener colores de tipos de Pokémon
+const getTypeColor = (type) => {
+  const colors = {
+    normal: '#A8A878',
+    fire: '#F08030',
+    water: '#6890F0',
+    electric: '#F8D030',
+    grass: '#78C850',
+    ice: '#98D8D8',
+    fighting: '#C03028',
+    poison: '#A040A0',
+    ground: '#E0C068',
+    flying: '#A890F0',
+    psychic: '#F85888',
+    bug: '#A8B820',
+    rock: '#B8A038',
+    ghost: '#705898',
+    dragon: '#7038F8',
+    dark: '#705848',
+    steel: '#B8B8D0',
+    fairy: '#EE99AC'
+  };
+  return colors[type] || '#68A090';
+};
 
 function App() {
   // Estados para manejar las notas y la interfaz
@@ -13,16 +39,17 @@ function App() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [activeTab, setActiveTab] = useState('notes');
-  const [externalData, setExternalData] = useState(null);
+  const [externalData, setExternalData] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [noteToDelete, setNoteToDelete] = useState(null);
   
   // Estados para manejar carga y errores
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [externalLoading, setExternalLoading] = useState(false);
   const [externalError, setExternalError] = useState(null);
-  const [sortOrder, setSortOrder] = useState('desc');
-
+  const [pokemonSearch, setPokemonSearch] = useState('');
   // Función para obtener notas del backend
   const fetchNotes = async () => {
     setLoading(true);
@@ -43,12 +70,78 @@ function App() {
     setExternalLoading(true);
     setExternalError(null);
     try {
-      const response = await fetch('https://pokeapi.co/api/v2/pokemon/ditto');
-      if (!response.ok) throw new Error('Failed to fetch');
-      const data = await response.json();
-      setExternalData(data);
+      if (pokemonSearch.trim()) {
+        const searchTerm = pokemonSearch.toLowerCase().trim();
+        const pokemonList = [];
+        
+        // Lista de Pokémon populares para sugerencias
+        const popularPokemon = [
+          'pikachu', 'charizard', 'blastoise', 'venusaur', 'alakazam', 'gengar',
+          'dragonite', 'mewtwo', 'mew', 'gyarados', 'lapras', 'eevee', 'vaporeon',
+          'jolteon', 'flareon', 'snorlax', 'articuno', 'zapdos', 'moltres'
+        ];
+        
+        // Buscar coincidencias parciales
+        const matches = popularPokemon.filter(name => 
+          name.includes(searchTerm) || searchTerm.includes(name.substring(0, 3))
+        );
+        
+        // Si hay coincidencias, buscar esos Pokémon
+        if (matches.length > 0) {
+          for (const pokemonName of matches.slice(0, 8)) {
+            try {
+              const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${pokemonName}`);
+              if (response.ok) {
+                const pokemon = await response.json();
+                pokemonList.push(pokemon);
+              }
+            } catch (err) {
+              console.log(`Error fetching ${pokemonName}:`, err);
+            }
+          }
+        }
+        
+        // Si no hay coincidencias, intentar búsqueda exacta
+        if (pokemonList.length === 0) {
+          try {
+            const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${searchTerm}`);
+            if (response.ok) {
+              const pokemon = await response.json();
+              pokemonList.push(pokemon);
+            }
+          } catch (err) {
+            // Si no encuentra nada, mostrar algunos aleatorios como sugerencia
+            for (let i = 0; i < 6; i++) {
+              const randomId = Math.floor(Math.random() * 150) + 1;
+              try {
+                const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${randomId}`);
+                if (response.ok) {
+                  const pokemon = await response.json();
+                  pokemonList.push(pokemon);
+                }
+              } catch (randomErr) {
+                console.log('Error fetching random pokemon:', randomErr);
+              }
+            }
+          }
+        }
+        
+        setExternalData(pokemonList);
+      } else {
+        // Obtener 12 Pokémon aleatorios
+        const pokemonList = [];
+        for (let i = 0; i < 12; i++) {
+          const randomId = Math.floor(Math.random() * 150) + 1;
+          const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${randomId}`);
+          if (response.ok) {
+            const pokemon = await response.json();
+            pokemonList.push(pokemon);
+          }
+        }
+        setExternalData(pokemonList);
+      }
     } catch (error) {
-      setExternalError('Failed to load external data. Please try again.');
+      setExternalError('Failed to load Pokémon data. Please try again.');
       console.error('Error fetching external data:', error);
     } finally {
       setExternalLoading(false);
@@ -62,7 +155,7 @@ function App() {
     } else {
       fetchExternalData();
     }
-  }, [page, search, activeTab]);
+  }, [page, search, activeTab, pokemonSearch]);
 
   // Función para crear una nueva nota
   const handleCreate = async (noteData) => {
@@ -86,15 +179,27 @@ function App() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this note?')) return;
+  const openDeleteModal = (note) => {
+    setNoteToDelete(note);
+    setShowDeleteModal(true);
+  };
+
+  const handleDelete = async () => {
+    if (!noteToDelete) return;
     
     try {
-      await deleteNote(id);
+      await deleteNote(noteToDelete.id);
+      setShowDeleteModal(false);
+      setNoteToDelete(null);
       fetchNotes();
     } catch (error) {
       alert('Failed to delete note: ' + (error.response?.data?.detail || error.message));
     }
+  };
+
+  const cancelDelete = () => {
+    setShowDeleteModal(false);
+    setNoteToDelete(null);
   };
 
   const openCreateModal = () => {
@@ -131,8 +236,7 @@ function App() {
     tabs: {
       display: 'flex',
       justifyContent: 'center',
-      marginBottom: '30px',
-      role: 'tablist'
+      marginBottom: '30px'
     },
     tab: {
       padding: '12px 24px',
@@ -195,8 +299,7 @@ function App() {
       padding: '20px',
       borderRadius: '8px',
       boxShadow: '0 2px 4px var(--shadow)',
-      transition: 'transform 0.2s, box-shadow 0.2s',
-      cursor: 'pointer'
+      transition: 'transform 0.2s, box-shadow 0.2s'
     },
     noteTitle: {
       fontSize: '18px',
@@ -219,12 +322,6 @@ function App() {
       justifyContent: 'center',
       alignItems: 'center',
       marginTop: '30px',
-      gap: '10px'
-    },
-    sortContainer: {
-      marginBottom: '20px',
-      display: 'flex',
-      alignItems: 'center',
       gap: '10px'
     }
   };
@@ -328,7 +425,7 @@ function App() {
                       Edit
                     </button>
                     <button
-                      onClick={() => handleDelete(note.id)}
+                      onClick={() => openDeleteModal(note)}
                       style={{...styles.button, ...styles.dangerButton}}
                     >
                       Delete
@@ -340,7 +437,7 @@ function App() {
           )}
 
           {/* Pagination */}
-          {!loading && !error && notes.length > 0 && (
+          {!loading && !error && (page > 1 || notes.length === 10) && (
             <div style={styles.pagination}>
               <button
                 onClick={() => setPage(Math.max(1, page - 1))}
@@ -352,7 +449,8 @@ function App() {
               <span>Page {page}</span>
               <button
                 onClick={() => setPage(page + 1)}
-                style={{...styles.button, ...styles.primaryButton}}
+                disabled={notes.length < 10}
+                style={{...styles.button, backgroundColor: notes.length < 10 ? '#ccc' : '#007bff', color: 'white'}}
               >
                 Next
               </button>
@@ -361,6 +459,17 @@ function App() {
         </div>
       ) : (
         <div>
+          {/* Pokémon Search */}
+          <div style={styles.searchContainer}>
+            <input
+              type="text"
+              placeholder="Search Pokémon (e.g., pika, char, dragon)..."
+              value={pokemonSearch}
+              onChange={(e) => setPokemonSearch(e.target.value)}
+              style={styles.input}
+            />
+          </div>
+
           {/* Loading State */}
           {externalLoading && <LoadingSpinner />}
 
@@ -368,45 +477,62 @@ function App() {
           {externalError && <ErrorMessage message={externalError} onRetry={fetchExternalData} />}
 
           {/* External Data */}
-          {!externalLoading && !externalError && externalData && (
+          {!externalLoading && !externalError && externalData.length > 0 && (
             <div>
-              <h2>Pokémon Data (PokéAPI)</h2>
+              <h2>Pokémon Collection (PokéAPI)</h2>
               <p style={{color: 'var(--text-secondary)', marginBottom: '20px'}}>
-                Information about Ditto from the PokéAPI
+                {pokemonSearch.trim() ? 
+                  `Showing results for "${pokemonSearch}" - ${externalData.length} Pokémon found` : 
+                  'Random Pokémon from the first generation'
+                }
               </p>
-              <div style={{...styles.noteCard, display: 'flex', gap: '20px', alignItems: 'center'}}>
-                <img 
-                  src={externalData.sprites?.front_default} 
-                  alt={externalData.name}
-                  style={{width: '120px', height: '120px'}}
-                />
-                <div>
-                  <h3 style={{...styles.noteTitle, textTransform: 'capitalize'}}>{externalData.name}</h3>
-                  <p style={styles.noteContent}>Height: {externalData.height / 10} m | Weight: {externalData.weight / 10} kg</p>
-                  <div style={{marginBottom: '10px'}}>
-                    <strong>Abilities: </strong>
-                    {externalData.abilities?.map((ability, index) => (
-                      <span key={index} style={{marginRight: '10px', textTransform: 'capitalize'}}>
-                        {ability.ability.name}{ability.is_hidden ? ' (Hidden)' : ''}
-                      </span>
-                    ))}
+              <div style={styles.notesGrid}>
+                {externalData.map((pokemon) => (
+                  <div key={pokemon.id} style={styles.noteCard}>
+                    <div style={{textAlign: 'center', marginBottom: '15px'}}>
+                      <img 
+                        src={pokemon.sprites?.front_default} 
+                        alt={pokemon.name}
+                        style={{width: '96px', height: '96px'}}
+                      />
+                    </div>
+                    <h3 style={{...styles.noteTitle, textAlign: 'center', textTransform: 'capitalize'}}>
+                      {pokemon.name}
+                    </h3>
+                    <p style={{...styles.noteContent, textAlign: 'center'}}>
+                      #{pokemon.id.toString().padStart(3, '0')}
+                    </p>
+                    <p style={styles.noteContent}>
+                      Height: {pokemon.height / 10} m | Weight: {pokemon.weight / 10} kg
+                    </p>
+                    <div style={{marginBottom: '10px'}}>
+                      <strong>Types: </strong>
+                      {pokemon.types?.map((type, index) => (
+                        <span key={index} style={{
+                          marginRight: '5px', 
+                          textTransform: 'capitalize', 
+                          backgroundColor: getTypeColor(type.type.name), 
+                          color: 'white',
+                          padding: '2px 8px', 
+                          borderRadius: '12px',
+                          fontSize: '12px'
+                        }}>
+                          {type.type.name}
+                        </span>
+                      ))}
+                    </div>
+                    <div>
+                      <strong>Abilities: </strong>
+                      <div style={{fontSize: '12px', color: 'var(--text-secondary)'}}>
+                        {pokemon.abilities?.slice(0, 2).map((ability, index) => (
+                          <span key={index} style={{marginRight: '8px', textTransform: 'capitalize'}}>
+                            {ability.ability.name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <strong>Types: </strong>
-                    {externalData.types?.map((type, index) => (
-                      <span key={index} style={{
-                        marginRight: '10px', 
-                        textTransform: 'capitalize', 
-                        backgroundColor: '#e3f2fd', 
-                        padding: '2px 8px', 
-                        borderRadius: '12px',
-                        fontSize: '12px'
-                      }}>
-                        {type.type.name}
-                      </span>
-                    ))}
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
           )}
@@ -421,6 +547,14 @@ function App() {
           onClose={() => setShowModal(false)}
         />
       )}
+
+      {/* Delete Modal */}
+      <DeleteModal
+        isOpen={showDeleteModal}
+        onConfirm={handleDelete}
+        onCancel={cancelDelete}
+        noteTitle={noteToDelete?.title || ''}
+      />
     </div>
   );
 }

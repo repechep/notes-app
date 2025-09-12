@@ -15,6 +15,8 @@ from app.exceptions.handlers import (
 from app.models import Note
 from app.services.note_service import NoteService
 from app.schemas import NoteCreate
+from app.middleware.logging import LoggingMiddleware
+from app.middleware.security import setup_security_middleware, add_security_headers
 
 # Crear todas las tablas en la base de datos al iniciar la aplicación
 Base.metadata.create_all(bind=engine)
@@ -59,6 +61,13 @@ def create_application() -> FastAPI:
     
     # Configurar CORS para permitir peticiones desde el frontend
     setup_cors(application)
+    
+    # Agregar middleware de logging
+    application.add_middleware(LoggingMiddleware)
+    
+    # Configurar middleware de seguridad
+    setup_security_middleware(application)
+    add_security_headers(application)
     
     # Registrar manejadores de excepciones personalizados
     application.add_exception_handler(NotFoundError, not_found_handler)
