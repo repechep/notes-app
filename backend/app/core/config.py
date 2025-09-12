@@ -19,7 +19,12 @@ class Settings:
     database_url: str = "sqlite:///./notes.db"
     
     # Orígenes permitidos para CORS (frontend URLs)
-    backend_cors_origins: List[str] = ["http://localhost:3000"]  # React dev server
+    backend_cors_origins: List[str] = [
+        "http://localhost:3000",  # React dev server
+        "http://127.0.0.1:3000",  # Alternative localhost
+        "http://localhost:5173",  # Vite dev server
+        "http://127.0.0.1:5173"   # Alternative Vite
+    ]
 
 # Instancia global de configuración
 settings = Settings()

@@ -1,4 +1,3 @@
-// Importar hooks de React y componentes necesarios
 import { useState, useEffect } from 'react';
 import { getNotes, createNote, updateNote, deleteNote } from './services/api';
 import NoteModal from './components/NoteModal';
@@ -7,33 +6,17 @@ import ErrorMessage from './components/ErrorMessage';
 import DarkModeToggle from './components/DarkModeToggle';
 import DeleteModal from './components/DeleteModal';
 
-// Función para obtener colores de tipos de Pokémon
-const getTypeColor = (type) => {
-  const colors = {
-    normal: '#A8A878',
-    fire: '#F08030',
-    water: '#6890F0',
-    electric: '#F8D030',
-    grass: '#78C850',
-    ice: '#98D8D8',
-    fighting: '#C03028',
-    poison: '#A040A0',
-    ground: '#E0C068',
-    flying: '#A890F0',
-    psychic: '#F85888',
-    bug: '#A8B820',
-    rock: '#B8A038',
-    ghost: '#705898',
-    dragon: '#7038F8',
-    dark: '#705848',
-    steel: '#B8B8D0',
-    fairy: '#EE99AC'
-  };
-  return colors[type] || '#68A090';
+const TYPE_COLORS = {
+  normal: '#A8A878', fire: '#F08030', water: '#6890F0', electric: '#F8D030',
+  grass: '#78C850', ice: '#98D8D8', fighting: '#C03028', poison: '#A040A0',
+  ground: '#E0C068', flying: '#A890F0', psychic: '#F85888', bug: '#A8B820',
+  rock: '#B8A038', ghost: '#705898', dragon: '#7038F8', dark: '#705848',
+  steel: '#B8B8D0', fairy: '#EE99AC'
 };
 
+const getTypeColor = (type) => TYPE_COLORS[type] || '#68A090';
+
 function App() {
-  // Estados para manejar las notas y la interfaz
   const [notes, setNotes] = useState([]);
   const [editingNote, setEditingNote] = useState(null);
   const [search, setSearch] = useState('');
@@ -43,121 +26,197 @@ function App() {
   const [showModal, setShowModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [noteToDelete, setNoteToDelete] = useState(null);
-  
-  // Estados para manejar carga y errores
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [externalLoading, setExternalLoading] = useState(false);
   const [externalError, setExternalError] = useState(null);
   const [pokemonSearch, setPokemonSearch] = useState('');
-  // Función para obtener notas del backend
+  const [selectedType, setSelectedType] = useState('');
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  const pokemonTypes = [
+    'normal', 'fire', 'water', 'electric', 'grass', 'ice',
+    'fighting', 'poison', 'ground', 'flying', 'psychic', 'bug',
+    'rock', 'ghost', 'dragon', 'dark', 'steel', 'fairy'
+  ];
+
+  const popularPokemon = [
+    'pikachu', 'charizard', 'blastoise', 'venusaur', 'alakazam', 'gengar',
+    'dragonite', 'mewtwo', 'mew', 'gyarados', 'lapras', 'eevee', 'vaporeon',
+    'jolteon', 'flareon', 'snorlax', 'articuno', 'zapdos', 'moltres',
+    'squirtle', 'wartortle', 'charmander', 'charmeleon', 'bulbasaur', 'ivysaur',
+    'caterpie', 'metapod', 'butterfree', 'weedle', 'kakuna', 'beedrill',
+    'pidgey', 'pidgeotto', 'pidgeot', 'rattata', 'raticate', 'spearow',
+    'fearow', 'ekans', 'arbok', 'sandshrew', 'sandslash', 'nidoran-f',
+    'nidorina', 'nidoqueen', 'nidoran-m', 'nidorino', 'nidoking', 'clefairy',
+    'clefable', 'vulpix', 'ninetales', 'jigglypuff', 'wigglytuff', 'zubat',
+    'golbat', 'oddish', 'gloom', 'vileplume', 'paras', 'parasect', 'venonat',
+    'venomoth', 'diglett', 'dugtrio', 'meowth', 'persian', 'psyduck', 'golduck',
+    'mankey', 'primeape', 'growlithe', 'arcanine', 'poliwag', 'poliwhirl',
+    'poliwrath', 'abra', 'kadabra', 'machop', 'machoke', 'machamp',
+    'bellsprout', 'weepinbell', 'victreebel', 'tentacool', 'tentacruel',
+    'geodude', 'graveler', 'golem', 'ponyta', 'rapidash', 'slowpoke',
+    'slowbro', 'magnemite', 'magneton', 'farfetchd', 'doduo', 'dodrio',
+    'seel', 'dewgong', 'grimer', 'muk', 'shellder', 'cloyster', 'gastly',
+    'haunter', 'onix', 'drowzee', 'hypno', 'krabby', 'kingler', 'voltorb',
+    'electrode', 'exeggcute', 'exeggutor', 'cubone', 'marowak', 'hitmonlee',
+    'hitmonchan', 'lickitung', 'koffing', 'weezing', 'rhyhorn', 'rhydon',
+    'chansey', 'tangela', 'kangaskhan', 'horsea', 'seadra', 'goldeen',
+    'seaking', 'staryu', 'starmie', 'mr-mime', 'scyther', 'jynx',
+    'electabuzz', 'magmar', 'pinsir', 'tauros', 'magikarp', 'ditto',
+    'porygon', 'omanyte', 'omastar', 'kabuto', 'kabutops', 'aerodactyl'
+  ];
+
   const fetchNotes = async () => {
     setLoading(true);
     setError(null);
     try {
       const response = await getNotes({ page, per_page: 10, search });
-      setNotes(response.data);
+      setNotes(response.items || response.data || response || []);
     } catch (error) {
-      setError('Failed to load notes. Please try again.');
-      console.error('Error fetching notes:', error);
+      console.error('Fetch notes error:', error);
+      setError(`Failed to load notes: ${error.message || 'Please try again.'}`);
+      setNotes([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // Función para obtener datos de API externa (PokéAPI)
+  const fetchPokemonByType = async (type) => {
+    try {
+      const response = await fetch(`https://pokeapi.co/api/v2/type/${type}`);
+      if (!response.ok) return [];
+      
+      const typeData = await response.json();
+      const pokemonList = typeData.pokemon.slice(0, 20).map(p => p.pokemon.name);
+      
+      const requests = pokemonList.map(async (name) => {
+        try {
+          const pokemonResponse = await fetch(`https://pokeapi.co/api/v2/pokemon/${name}`);
+          return pokemonResponse.ok ? await pokemonResponse.json() : null;
+        } catch {
+          return null;
+        }
+      });
+      
+      const results = await Promise.all(requests);
+      return results.filter(Boolean);
+    } catch {
+      return [];
+    }
+  };
+
   const fetchExternalData = async () => {
     setExternalLoading(true);
     setExternalError(null);
     try {
-      if (pokemonSearch.trim()) {
+      let pokemonList = [];
+      
+      if (selectedType) {
+        pokemonList = await fetchPokemonByType(selectedType);
+      } else if (pokemonSearch.trim()) {
         const searchTerm = pokemonSearch.toLowerCase().trim();
-        const pokemonList = [];
         
-        // Lista de Pokémon populares para sugerencias
-        const popularPokemon = [
-          'pikachu', 'charizard', 'blastoise', 'venusaur', 'alakazam', 'gengar',
-          'dragonite', 'mewtwo', 'mew', 'gyarados', 'lapras', 'eevee', 'vaporeon',
-          'jolteon', 'flareon', 'snorlax', 'articuno', 'zapdos', 'moltres'
-        ];
-        
-        // Buscar coincidencias parciales
         const matches = popularPokemon.filter(name => 
           name.includes(searchTerm) || searchTerm.includes(name.substring(0, 3))
         );
         
-        // Si hay coincidencias, buscar esos Pokémon
         if (matches.length > 0) {
-          for (const pokemonName of matches.slice(0, 8)) {
+          const requests = matches.slice(0, 12).map(async (pokemonName) => {
             try {
               const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${pokemonName}`);
-              if (response.ok) {
-                const pokemon = await response.json();
-                pokemonList.push(pokemon);
-              }
-            } catch (err) {
-              console.log(`Error fetching ${pokemonName}:`, err);
+              return response.ok ? await response.json() : null;
+            } catch {
+              return null;
             }
-          }
+          });
+          
+          const results = await Promise.all(requests);
+          pokemonList = results.filter(Boolean);
         }
         
-        // Si no hay coincidencias, intentar búsqueda exacta
         if (pokemonList.length === 0) {
           try {
             const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${searchTerm}`);
             if (response.ok) {
               const pokemon = await response.json();
-              pokemonList.push(pokemon);
+              pokemonList = [pokemon];
             }
-          } catch (err) {
-            // Si no encuentra nada, mostrar algunos aleatorios como sugerencia
-            for (let i = 0; i < 6; i++) {
+          } catch {
+            const randomRequests = Array.from({ length: 8 }, async () => {
               const randomId = Math.floor(Math.random() * 150) + 1;
               try {
                 const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${randomId}`);
-                if (response.ok) {
-                  const pokemon = await response.json();
-                  pokemonList.push(pokemon);
-                }
-              } catch (randomErr) {
-                console.log('Error fetching random pokemon:', randomErr);
+                return response.ok ? await response.json() : null;
+              } catch {
+                return null;
               }
-            }
+            });
+            
+            const randomResults = await Promise.all(randomRequests);
+            pokemonList = randomResults.filter(Boolean);
           }
         }
-        
-        setExternalData(pokemonList);
       } else {
-        // Obtener 12 Pokémon aleatorios
-        const pokemonList = [];
-        for (let i = 0; i < 12; i++) {
+        const randomRequests = Array.from({ length: 12 }, async () => {
           const randomId = Math.floor(Math.random() * 150) + 1;
-          const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${randomId}`);
-          if (response.ok) {
-            const pokemon = await response.json();
-            pokemonList.push(pokemon);
+          try {
+            const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${randomId}`);
+            return response.ok ? await response.json() : null;
+          } catch {
+            return null;
           }
-        }
-        setExternalData(pokemonList);
+        });
+        
+        const results = await Promise.all(randomRequests);
+        pokemonList = results.filter(Boolean);
       }
+      
+      setExternalData(pokemonList);
     } catch (error) {
       setExternalError('Failed to load Pokémon data. Please try again.');
-      console.error('Error fetching external data:', error);
     } finally {
       setExternalLoading(false);
     }
   };
 
-  // Efecto para cargar datos cuando cambian los parámetros
+  const handlePokemonSearchChange = (e) => {
+    const value = e.target.value;
+    setPokemonSearch(value);
+    
+    if (value.trim().length > 0) {
+      const filtered = popularPokemon
+        .filter(name => name.toLowerCase().includes(value.toLowerCase()))
+        .slice(0, 8);
+      setSuggestions(filtered);
+      setShowSuggestions(true);
+    } else {
+      setSuggestions([]);
+      setShowSuggestions(false);
+    }
+  };
+
+  const selectSuggestion = (suggestion) => {
+    setPokemonSearch(suggestion);
+    setShowSuggestions(false);
+    setSuggestions([]);
+  };
+
+  const handleTypeFilter = (type) => {
+    setSelectedType(type === selectedType ? '' : type);
+    setPokemonSearch('');
+    setShowSuggestions(false);
+  };
+
   useEffect(() => {
     if (activeTab === 'notes') {
       fetchNotes();
     } else {
       fetchExternalData();
     }
-  }, [page, search, activeTab, pokemonSearch]);
+  }, [page, search, activeTab, pokemonSearch, selectedType]);
 
-  // Función para crear una nueva nota
   const handleCreate = async (noteData) => {
     try {
       await createNote({ ...noteData, archived: false });
@@ -323,6 +382,43 @@ function App() {
       alignItems: 'center',
       marginTop: '30px',
       gap: '10px'
+    },
+    typeFilters: {
+      display: 'flex',
+      flexWrap: 'wrap',
+      gap: '8px',
+      marginBottom: '15px'
+    },
+    typeButton: {
+      padding: '6px 12px',
+      border: 'none',
+      borderRadius: '20px',
+      cursor: 'pointer',
+      fontSize: '14px',
+      textTransform: 'capitalize',
+      transition: 'all 0.2s',
+      outline: 'none'
+    },
+    suggestionBox: {
+      position: 'absolute',
+      top: '100%',
+      left: 0,
+      right: 0,
+      backgroundColor: 'var(--bg-secondary)',
+      border: '1px solid var(--border-color)',
+      borderTop: 'none',
+      borderRadius: '0 0 4px 4px',
+      maxHeight: '200px',
+      overflowY: 'auto',
+      zIndex: 1000,
+      boxShadow: '0 2px 8px var(--shadow)'
+    },
+    suggestionItem: {
+      padding: '10px 12px',
+      cursor: 'pointer',
+      textTransform: 'capitalize',
+      color: 'var(--text-primary)',
+      transition: 'background-color 0.2s'
     }
   };
 
@@ -333,7 +429,6 @@ function App() {
         <DarkModeToggle />
       </div>
       
-      {/* Tabs */}
       <div style={styles.tabs} role="tablist">
         <button
           role="tab"
@@ -361,7 +456,6 @@ function App() {
 
       {activeTab === 'notes' ? (
         <div>
-          {/* Search */}
           <div style={styles.searchContainer}>
             <input
               type="text"
@@ -372,7 +466,6 @@ function App() {
             />
           </div>
 
-          {/* Create Button */}
           <button
             onClick={openCreateModal}
             style={{...styles.button, ...styles.primaryButton}}
@@ -380,13 +473,9 @@ function App() {
             Create New Note
           </button>
 
-          {/* Loading State */}
           {loading && <LoadingSpinner />}
-
-          {/* Error State */}
           {error && <ErrorMessage message={error} onRetry={fetchNotes} />}
 
-          {/* Empty State */}
           {!loading && !error && notes.length === 0 && (
             <div style={styles.emptyState}>
               <h3>No notes found</h3>
@@ -394,7 +483,6 @@ function App() {
             </div>
           )}
 
-          {/* Notes Grid */}
           {!loading && !error && notes.length > 0 && (
             <div style={styles.notesGrid}>
               {notes.map((note) => (
@@ -436,7 +524,6 @@ function App() {
             </div>
           )}
 
-          {/* Pagination */}
           {!loading && !error && (page > 1 || notes.length === 10) && (
             <div style={styles.pagination}>
               <button
@@ -459,31 +546,83 @@ function App() {
         </div>
       ) : (
         <div>
-          {/* Pokémon Search */}
           <div style={styles.searchContainer}>
-            <input
-              type="text"
-              placeholder="Search Pokémon (e.g., pika, char, dragon)..."
-              value={pokemonSearch}
-              onChange={(e) => setPokemonSearch(e.target.value)}
-              style={styles.input}
-            />
+            <div style={{position: 'relative'}}>
+              <input
+                type="text"
+                placeholder="Search Pokémon by name..."
+                value={pokemonSearch}
+                onChange={handlePokemonSearchChange}
+                onFocus={() => pokemonSearch.trim() && setShowSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                style={styles.input}
+              />
+              {showSuggestions && suggestions.length > 0 && (
+                <div style={styles.suggestionBox}>
+                  {suggestions.map((suggestion, index) => (
+                    <div
+                      key={index}
+                      onClick={() => selectSuggestion(suggestion)}
+                      style={{
+                        ...styles.suggestionItem,
+                        borderBottom: index < suggestions.length - 1 ? '1px solid var(--border-color)' : 'none'
+                      }}
+                      onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--bg-tertiary)'}
+                      onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                    >
+                      {suggestion}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <div style={{marginBottom: '20px'}}>
+            <h3 style={{color: 'var(--text-primary)', marginBottom: '10px'}}>Filter by Type:</h3>
+            <div style={styles.typeFilters}>
+              {pokemonTypes.map((type) => (
+                <button
+                  key={type}
+                  onClick={() => handleTypeFilter(type)}
+                  style={{
+                    ...styles.typeButton,
+                    backgroundColor: selectedType === type ? getTypeColor(type) : 'var(--bg-tertiary)',
+                    color: selectedType === type ? 'white' : 'var(--text-primary)'
+                  }}
+                >
+                  {type}
+                </button>
+              ))}
+            </div>
+            {selectedType && (
+              <button
+                onClick={() => handleTypeFilter('')}
+                style={{
+                  ...styles.button,
+                  backgroundColor: '#6c757d',
+                  color: 'white',
+                  fontSize: '14px',
+                  padding: '8px 16px'
+                }}
+              >
+                Clear Filter
+              </button>
+            )}
           </div>
 
-          {/* Loading State */}
           {externalLoading && <LoadingSpinner />}
-
-          {/* Error State */}
           {externalError && <ErrorMessage message={externalError} onRetry={fetchExternalData} />}
 
-          {/* External Data */}
           {!externalLoading && !externalError && externalData.length > 0 && (
             <div>
               <h2>Pokémon Collection (PokéAPI)</h2>
               <p style={{color: 'var(--text-secondary)', marginBottom: '20px'}}>
-                {pokemonSearch.trim() ? 
-                  `Showing results for "${pokemonSearch}" - ${externalData.length} Pokémon found` : 
-                  'Random Pokémon from the first generation'
+                {selectedType ? 
+                  `Showing ${selectedType.toUpperCase()} type Pokémon - ${externalData.length} found` :
+                  pokemonSearch.trim() ? 
+                    `Showing results for "${pokemonSearch}" - ${externalData.length} Pokémon found` : 
+                    'Random Pokémon from the first generation'
                 }
               </p>
               <div style={styles.notesGrid}>
@@ -539,7 +678,6 @@ function App() {
         </div>
       )}
 
-      {/* Modal */}
       {showModal && (
         <NoteModal
           note={editingNote}
@@ -548,7 +686,6 @@ function App() {
         />
       )}
 
-      {/* Delete Modal */}
       <DeleteModal
         isOpen={showDeleteModal}
         onConfirm={handleDelete}
