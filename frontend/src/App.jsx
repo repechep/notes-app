@@ -227,6 +227,7 @@ function App() {
     try {
       await createNote({ ...noteData, archived: false });
       setShowModal(false);
+      setActiveTab('notes'); // Asegurar que regrese al tab de notas
       fetchNotes();
     } catch (error) {
       throw new Error(error.response?.data?.detail || 'Failed to create note');
@@ -238,6 +239,7 @@ function App() {
       await updateNote(id, noteData);
       setEditingNote(null);
       setShowModal(false);
+      setActiveTab('notes'); // Asegurar que regrese al tab de notas
       fetchNotes();
     } catch (error) {
       throw new Error(error.response?.data?.detail || 'Failed to update note');
